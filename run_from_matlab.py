@@ -35,7 +35,7 @@ def copy_files():
 try:
 
     print('[x] Calling csmith')
-    p_cs = subprocess.call('csmith --easy-x --no-argc > randgen.c', shell=True)
+    p_cs = subprocess.call('csmith --easy-x --no-argc --no-pointers > randgen.c', shell=True)
     print('[x] End csmith')
 
     p_gcc = subprocess.call('gcc randgen.c -o randgen', shell=True)
