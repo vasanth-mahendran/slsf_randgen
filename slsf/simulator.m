@@ -25,8 +25,7 @@ classdef simulator < handle
             % CONSTRUCTOR %
             filename = 'untitled.xlsx';
             A = [1,0; 2,1; 3,0; 4,1;5,0;6,1;7,0;8,1;9,0;10,1];
-            sheet = 'Sheet1';
-            xlswrite(filename,A,sheet);
+            xlswrite(filename,A);
             obj.generator = generator;
             obj.max_try = max_try;
             obj.fixed_blocks = mymap();
@@ -212,6 +211,9 @@ classdef simulator < handle
                     ret = true;
                     found = true; % So that we eliminate alg. loops
                 catch e
+                     %[msgstr, msgid] = lastwarn
+                     %disp(msgid);
+                     %disp('vasanth-----------');
                     disp(['[E] Error in simulation: ', e.identifier]);
                     obj.generator.my_result.exc = e;
                     
@@ -284,6 +286,7 @@ classdef simulator < handle
             found = false;          % Did the exception matched with any of our fixers
             
             if isa(e, 'MSLException')
+                %disp('Truee=--------');
  
                 if util.starts_with(e.identifier, 'Simulink:Engine:AlgLoopTrouble')
                     obj.fix_alg_loop(e);
@@ -348,6 +351,20 @@ classdef simulator < handle
                             done = obj.fix_spread_sheet(e);
                             found = true;
                             
+                        case {'Simulink:DataType:InvFixptBoolOutPortDType'}
+                            done = obj.fix_invalid_fix_bool_out(e);
+                            found = true;
+                        
+                        case {'Simulink:Engine:DerivNotFinite'}
+                            done = obj.fix_negative_sign(e,'output');
+                            obj.fix_time_domain(e);
+                            found = true;
+                        
+                        %case {'Simulink:blocks:DivideByZero'}
+                        %    disp('vasaasdsadsadasdasda');
+                        %    done = obj.fix_jacob_mat(e);
+                        %    found = true;
+                             
                         otherwise
                             done = true;
                     end
@@ -802,6 +819,79 @@ classdef simulator < handle
             for j = 1:numel(e.handles)
                 handles = e.handles{j};
                 set_param(handles, 'SheetName', 'untitled');
+            end  
+        end
+        
+        function done = fix_invalid_fix_bool_out(obj, e)
+            done = false;
+            for j = 1:numel(e.handles)
+                handles = e.handles{j};
+                set_param(handles, 'OutDataTypeStr', 'int8');
+            end  
+        end
+        
+        function done = fix_negative_sign(obj, e, loc, blk_params)
+            
+            if nargin < 4
+                blk_params = []; % Parameters for the new block
+            end
+            
+            
+            disp('FIXING Negative Sign...');
+            done = false;
+            
+%             if ~isempty(obj.last_handle) && strcmp(obj.generator.last_exc.identifier, e.identifier)
+%                 disp('Same error as last one. Check for handle...');
+%                 if obj.last_handle == 
+%             end
+            
+            for i = 1:numel(e.handles)
+                inner = e.handles{i};
+ 
+                h = util.select_me_or_parent(inner);
+ 
+%                 if at_output
+                switch loc
+                    case {'output'}
+                        new_blocks = obj.add_block_in_the_middle(h, 'Simulink/Math Operations/Abs', true, false);
+                        break;
+                    case {'input'}
+                        new_blocks = obj.add_block_in_the_middle(h, 'Simulink/Math Operations/Abs', false, true);
+                        break;
+                    case {'both'}
+                        new_blocks = obj.add_block_in_the_middle(h, 'Simulink/Math Operations/Abs', true, false);
+                        more_new = obj.add_block_in_the_middle(h, 'Simulink/Math Operations/Abs', false, true);
+                        new_blocks.extend(more_new);
+                        break;
+                    otherwise
+                        throw(MException('RandGen:FixDataType:InvalidValForParamLOC', 'Invalid value for parameter loc'));
+                end
+            end
+            
+            if ~isempty(blk_params) 
+                for i=1:new_blocks.len
+                    for j=1:numel(blk_params)
+                        set_param(new_blocks.get(i), blk_params{j}{1}, blk_params{j}{2});
+                    end
+                end
+            end
+                 
+        end
+        
+        function done = fix_time_domain(obj, e)
+            done = false;
+            for j = 1:numel(e.handles)
+                handles = e.handles{j};
+                h = get_param(get_param(handles, 'Parent'), 'Handle');
+                set_param(h, 'TimeDomain', 'Discrete-time');
+            end  
+        end
+        
+        function done = fix_jacob_mat(obj, e)
+            done = false;
+            for j = 1:numel(e.handles)
+                handles = e.handles{j};
+                set_param(handles, 'Function', 'signedSqrt');
             end  
         end
         
