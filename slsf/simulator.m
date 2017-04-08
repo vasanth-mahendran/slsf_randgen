@@ -211,9 +211,6 @@ classdef simulator < handle
                     ret = true;
                     found = true; % So that we eliminate alg. loops
                 catch e
-                     %[msgstr, msgid] = lastwarn
-                     %disp(msgid);
-                     %disp('vasanth-----------');
                     disp(['[E] Error in simulation: ', e.identifier]);
                     obj.generator.my_result.exc = e;
                     
@@ -286,7 +283,6 @@ classdef simulator < handle
             found = false;          % Did the exception matched with any of our fixers
             
             if isa(e, 'MSLException')
-                %disp('Truee=--------');
  
                 if util.starts_with(e.identifier, 'Simulink:Engine:AlgLoopTrouble')
                     obj.fix_alg_loop(e);
@@ -361,7 +357,6 @@ classdef simulator < handle
                             found = true;
                         
                         %case {'Simulink:blocks:DivideByZero'}
-                        %    disp('vasaasdsadsadasdasda');
                         %    done = obj.fix_jacob_mat(e);
                         %    found = true;
                              
