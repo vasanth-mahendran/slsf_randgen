@@ -182,7 +182,7 @@ classdef simulator < handle
         
         function ret = simulate(obj, slb)
             % Returns true if simulation did not raise any error.
-            
+            disp('simulate');
             done = false;
             ret = false;
             
